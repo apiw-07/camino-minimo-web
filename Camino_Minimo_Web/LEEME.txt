@@ -1,0 +1,16 @@
+CAMINO MÍNIMO CON DIJKSTRA - VERSIÓN WEB
+
+Qué hay en esta carpeta
+  index.html   La página.
+  python/      Nuestros archivos grafo.py, dijkstra.py y generador.py, sin cambios.
+               La página los ejecuta en el navegador con Python.
+  pyodide/     El motor que permite correr Python dentro del navegador.
+
+Plan B sin internet
+  Doble clic en index.html. Se abre en el navegador y funciona igual,
+  con una copia de la lógica en JavaScript (lo indica abajo a la izquierda).
+
+Para tener un enlace propio (opcional, gratis)
+  1. Entrar a https://app.netlify.com/drop y crear una cuenta.
+  2. Arrastrar ESTA carpeta completa a la página.
+  3. Netlify da un enlace que abre en cualquier computadora o celular.

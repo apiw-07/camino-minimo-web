@@ -1,0 +1,1924 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Camino Mínimo con Dijkstra</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Calcula la ruta mínima entre dos vértices con el algoritmo de Dijkstra y recorre cada iteración paso a paso.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: barra con los controles arriba; debajo, el grafo grande sobre papel cuadriculado a la izquierda
+   y, a la derecha, el recorrido del algoritmo y la matriz de pesos. En celular, una sola columna con el grafo primero. */
+:root {
+  --papel: #f3f5fa;
+  --tarjeta: #ffffff;
+  --tinta: #17203a;
+  --tenue: #5a6585;
+  --borde: #dde2ee;
+  --cuadricula: #eceff6;
+  --nodo: #ffffff;
+  --arista: #a2abc3;
+  --ruta: #2b55e3;
+  --ruta-suave: #e4eaff;
+  --actual: #d9690b;
+  --actual-suave: #fff0e0;
+  --fijado: #138a61;
+  --fijado-suave: #dcf4e9;
+  --error: #c92f2f;
+  --error-suave: #fde8e8;
+  --sobre-color: #ffffff;
+  --sombra: 0 1px 2px rgba(23, 32, 58, .05), 0 10px 28px rgba(23, 32, 58, .06);
+  --f-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-texto: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radio: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papel: #0e1322; --tarjeta: #151c2e; --tinta: #e7ebf6; --tenue: #98a3c0; --borde: #283252;
+    --cuadricula: #1a2237; --nodo: #1b2339; --arista: #56617f; --ruta: #7896ff; --ruta-suave: #1f2a52;
+    --actual: #ff9f45; --actual-suave: #3a2814; --fijado: #3dcf92; --fijado-suave: #12352a;
+    --error: #ff7070; --error-suave: #3a1717; --sobre-color: #0e1322;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --papel: #0e1322; --tarjeta: #151c2e; --tinta: #e7ebf6; --tenue: #98a3c0; --borde: #283252;
+  --cuadricula: #1a2237; --nodo: #1b2339; --arista: #56617f; --ruta: #7896ff; --ruta-suave: #1f2a52;
+  --actual: #ff9f45; --actual-suave: #3a2814; --fijado: #3dcf92; --fijado-suave: #12352a;
+  --error: #ff7070; --error-suave: #3a1717; --sobre-color: #0e1322;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--f-texto);
+  font-size: 15px;
+  line-height: 1.5;
+}
+button, input, select { font: inherit; color: inherit; }
+h1, h2 { font-family: var(--f-titulo); text-wrap: balance; margin: 0; }
+kbd {
+  font-family: var(--f-mono); font-size: .85em; padding: 0 .35em;
+  border: 1px solid var(--borde); border-bottom-width: 2px; border-radius: 4px; background: var(--papel);
+}
+
+.envoltura {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 24px;
+  display: grid;
+  gap: 14px;
+}
+
+/* ---------- Barra superior ---------- */
+.barra {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+}
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo { width: 42px; height: 42px; flex: none; }
+.logo .l-arista { stroke: var(--arista); stroke-width: 2.4; }
+.logo .l-ruta { stroke: var(--ruta); stroke-width: 3.4; stroke-linecap: round; }
+.logo .l-nodo { fill: var(--tarjeta); stroke: var(--tinta); stroke-width: 2.2; }
+.logo .l-nodo.r { fill: var(--ruta); stroke: var(--ruta); }
+.marca h1 { font-size: 24px; font-weight: 800; letter-spacing: -.01em; line-height: 1.1; }
+.marca p { margin: 2px 0 0; color: var(--tenue); font-size: 13.5px; }
+
+.controles { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.campo { display: inline-flex; align-items: center; gap: 8px; }
+.etiqueta { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tenue); }
+
+.contador {
+  display: inline-flex; align-items: center; background: var(--tarjeta);
+  border: 1px solid var(--borde); border-radius: 10px; overflow: hidden;
+}
+.contador button {
+  width: 34px; height: 36px; border: 0; background: transparent; cursor: pointer; font-size: 18px; line-height: 1;
+}
+.contador button:hover:not(:disabled) { background: var(--ruta-suave); color: var(--ruta); }
+.contador button:disabled { opacity: .35; cursor: default; }
+.contador output {
+  min-width: 32px; text-align: center; font: 700 16px var(--f-mono); font-variant-numeric: tabular-nums;
+}
+
+.interruptor { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-weight: 700; font-size: 14px; }
+.interruptor input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interruptor .pista {
+  width: 38px; height: 22px; border-radius: 22px; background: var(--borde); position: relative; transition: background .2s;
+}
+.interruptor .pista::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--tarjeta); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s;
+}
+.interruptor input:checked + .pista { background: var(--ruta); }
+.interruptor input:checked + .pista::after { transform: translateX(16px); }
+.interruptor input:focus-visible + .pista { outline: 2px solid var(--ruta); outline-offset: 2px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 38px; padding: 0 14px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--borde); background: var(--tarjeta); font-weight: 700; font-size: 14px;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn:hover:not(:disabled) { border-color: var(--ruta); color: var(--ruta); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primario { background: var(--ruta); border-color: var(--ruta); color: var(--sobre-color); }
+.btn.primario:hover:not(:disabled) { color: var(--sobre-color); filter: brightness(1.08); }
+.btn.icono { width: 38px; padding: 0; font-size: 17px; }
+.btn.chico { height: 32px; padding: 0 11px; font-size: 13px; }
+.btn.grande { height: 42px; padding: 0 18px; font-size: 15px; }
+.btn.llamar { animation: llamar 1.8s ease-in-out infinite; }
+@keyframes llamar {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ruta) 45%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ruta) 0%, transparent); }
+}
+:focus-visible { outline: 2px solid var(--ruta); outline-offset: 2px; }
+
+select {
+  height: 38px; padding: 0 30px 0 12px; border-radius: 10px; border: 1px solid var(--borde);
+  background: var(--tarjeta); font: 700 15px var(--f-mono); cursor: pointer; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tenue) 50%), linear-gradient(135deg, var(--tenue) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px;
+  background-size: 5px 5px; background-repeat: no-repeat;
+}
+
+/* ---------- Tablero ---------- */
+.tablero {
+  display: grid; gap: 14px; align-items: start;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-areas: "grafo recorrido" "grafo matriz";
+}
+.panel {
+  background: var(--tarjeta); border: 1px solid var(--borde); border-radius: var(--radio);
+  box-shadow: var(--sombra); min-width: 0;
+}
+.panel-cabeza {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid var(--borde);
+}
+.panel-cabeza h2 { font-size: 18px; font-weight: 800; }
+.panel-cabeza .sub { color: var(--tenue); font-size: 13px; }
+
+.panel-grafo {
+  grid-area: grafo; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  display: flex; flex-direction: column; height: calc(100vh - 110px); min-height: 560px; overflow: hidden;
+}
+.lienzo {
+  position: relative; flex: 1; min-height: 0;
+  background-color: var(--tarjeta);
+  background-image:
+    linear-gradient(var(--cuadricula) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cuadricula) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+#svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
+
+.cargando {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center;
+  background: color-mix(in srgb, var(--tarjeta) 82%, transparent); color: var(--tenue); font-size: 14px;
+}
+.cargando b { color: var(--tinta); font-size: 15px; }
+.cargando p { margin: 0; }
+.giro {
+  width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--borde); border-top-color: var(--ruta);
+  animation: girar 0.9s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+.aviso-grafo {
+  position: absolute; left: 12px; right: 12px; top: 12px; padding: 8px 12px; border-radius: 10px;
+  background: var(--error-suave); color: var(--error); font-weight: 700; font-size: 13.5px;
+}
+
+.consulta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+  padding: 12px 16px; border-top: 1px solid var(--borde);
+}
+.consulta .btn.grande { margin-left: auto; }
+
+.leyenda {
+  list-style: none; margin: 0; padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 6px 16px;
+  font-size: 12.5px; color: var(--tenue);
+}
+.leyenda li { display: inline-flex; align-items: center; gap: 6px; }
+.punto { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--tinta); background: var(--nodo); flex: none; }
+.punto.actual { background: var(--actual); border-color: var(--actual); }
+.punto.fijado { background: var(--fijado); border-color: var(--fijado); }
+.punto.ruta { background: var(--ruta); border-color: var(--ruta); }
+.raya { width: 20px; height: 0; border-top: 3px solid var(--actual); flex: none; }
+.raya.revisa { border-top: 2px dashed var(--actual); }
+
+/* ---------- Grafo SVG ---------- */
+.arista { fill: none; stroke: var(--arista); stroke-width: 1.6; transition: opacity .15s; }
+.arista.arbol { stroke: var(--fijado); stroke-width: 2.6; }
+.arista.revisa { stroke: var(--actual); stroke-width: 2; stroke-dasharray: 6 5; }
+.arista.mejora { stroke: var(--actual); stroke-width: 3.4; }
+.arista.ruta { stroke: var(--ruta); stroke-width: 4.5; stroke-linecap: round; }
+.peso {
+  font: 600 12px var(--f-mono); fill: var(--tenue); text-anchor: middle; dominant-baseline: central;
+  paint-order: stroke; stroke: var(--tarjeta); stroke-width: 4px; stroke-linejoin: round; transition: opacity .15s;
+}
+.peso.arbol { fill: var(--fijado); }
+.peso.revisa, .peso.mejora { fill: var(--actual); font-weight: 700; }
+.peso.ruta { fill: var(--ruta); font-weight: 700; font-size: 13px; }
+.flecha { fill: var(--arista); }
+.flecha.arbol { fill: var(--fijado); }
+.flecha.revisa, .flecha.mejora { fill: var(--actual); }
+.flecha.ruta { fill: var(--ruta); }
+
+.nodo { cursor: grab; touch-action: none; }
+.nodo.arrastrando { cursor: grabbing; }
+.nodo .cuerpo { fill: var(--nodo); stroke: var(--tinta); stroke-width: 2; }
+.nodo .num { fill: var(--tinta); font: 800 14px var(--f-titulo); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.nodo.actual .cuerpo { fill: var(--actual); stroke: var(--actual); }
+.nodo.fijado .cuerpo { fill: var(--fijado); stroke: var(--fijado); }
+.nodo.ruta .cuerpo { fill: var(--ruta); stroke: var(--ruta); }
+.nodo.actual .num, .nodo.fijado .num, .nodo.ruta .num { fill: var(--sobre-color); }
+.nodo .anillo { fill: none; stroke: var(--tinta); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: .55; }
+.nodo .pulso { fill: none; stroke: var(--actual); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: pulso 1.4s ease-out infinite; }
+@keyframes pulso { from { transform: scale(1); opacity: .7; } to { transform: scale(1.9); opacity: 0; } }
+.nodo .marcador {
+  font: 700 9.5px var(--f-texto); letter-spacing: .08em; fill: var(--tenue); text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: var(--tarjeta); stroke-width: 3px;
+}
+.dist rect { fill: var(--tarjeta); stroke: var(--borde); stroke-width: 1.2; }
+.dist text { font: 700 11px var(--f-mono); fill: var(--tenue); text-anchor: middle; dominant-baseline: central; }
+.dist.fija rect { fill: var(--fijado-suave); stroke: var(--fijado); }
+.dist.fija text { fill: var(--fijado); }
+.dist.cambio rect { fill: var(--actual-suave); stroke: var(--actual); }
+.dist.cambio text { fill: var(--actual); }
+#svg.enfoque .arista:not(.inc), #svg.enfoque .peso:not(.inc) { opacity: .1; }
+#svg.enfoque .nodo:not(.inc) { opacity: .45; }
+
+/* ---------- Recorrido ---------- */
+.panel-recorrido { grid-area: recorrido; }
+.resumen { padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; border-bottom: 1px solid var(--borde); }
+.resumen .vacio { color: var(--tenue); margin: 0; }
+.resumen .error { color: var(--error); font-weight: 700; margin: 0; }
+.dato { display: grid; gap: 4px; }
+.dato .valor { font: 800 26px/1 var(--f-titulo); font-variant-numeric: tabular-nums; }
+.camino { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.camino .flecha-txt { color: var(--ruta); font-weight: 700; }
+.chip {
+  display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 14px;
+  font: 800 13.5px var(--f-titulo); border: 2px solid var(--tinta); background: var(--nodo); color: var(--tinta);
+  font-variant-numeric: tabular-nums; vertical-align: middle;
+}
+.chip.ruta { background: var(--ruta); border-color: var(--ruta); color: var(--sobre-color); }
+.chip.actual { background: var(--actual); border-color: var(--actual); color: var(--sobre-color); }
+.chip.fijado { background: var(--fijado); border-color: var(--fijado); color: var(--sobre-color); }
+.chip.chico { min-width: 22px; height: 22px; font-size: 12px; border-width: 1.5px; }
+
+.pestanas { display: flex; gap: 4px; padding: 10px 12px 0; border-bottom: 1px solid var(--borde); overflow-x: auto; }
+.pestanas button {
+  border: 0; background: transparent; padding: 8px 12px 10px; font-weight: 700; font-size: 14px; color: var(--tenue);
+  cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.pestanas button[aria-selected="true"] { color: var(--ruta); border-bottom-color: var(--ruta); }
+.pestanas button:hover { color: var(--tinta); }
+.vista { padding: 14px 16px 16px; display: grid; gap: 12px; min-width: 0; }
+
+.navegacion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.navegacion .contador-paso { margin-left: auto; color: var(--tenue); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.navegacion .contador-paso b { color: var(--tinta); }
+.progreso { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.progreso button {
+  height: 28px; min-width: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--borde);
+  background: var(--papel); cursor: pointer; font: 700 12.5px var(--f-mono); color: var(--tenue);
+}
+.progreso button.hecho { background: var(--fijado-suave); border-color: transparent; color: var(--fijado); }
+.progreso button.activo { background: var(--actual); border-color: var(--actual); color: var(--sobre-color); }
+.progreso .sep { color: var(--borde); font-size: 12px; }
+
+.explicacion { display: grid; gap: 10px; }
+.explicacion .titulo-paso { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font: 800 17px var(--f-titulo); }
+.explicacion p { margin: 0; max-width: 62ch; }
+.explicacion .nota-paso { color: var(--tenue); }
+.relajaciones { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.relajaciones li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center;
+  padding: 8px 12px; border-radius: 10px; background: var(--papel); border-left: 4px solid var(--borde);
+}
+.relajaciones li.mejora { background: var(--actual-suave); border-left-color: var(--actual); }
+.relajaciones .par { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.relajaciones .cuenta { font-family: var(--f-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.relajaciones .veredicto { grid-column: 2; font-size: 13.5px; color: var(--tenue); }
+.relajaciones li.mejora .veredicto { color: var(--actual); font-weight: 700; }
+.cierre {
+  padding: 10px 14px; border-radius: 10px; background: var(--ruta-suave); color: var(--tinta);
+  border: 1px solid color-mix(in srgb, var(--ruta) 35%, transparent);
+}
+.cierre.sin-camino { background: var(--error-suave); border-color: color-mix(in srgb, var(--error) 35%, transparent); }
+.cierre b { color: var(--ruta); }
+.cierre.sin-camino b { color: var(--error); }
+
+.nota { margin: 0; color: var(--tenue); font-size: 13.5px; }
+.tabla-envoltura { overflow-x: auto; border: 1px solid var(--borde); border-radius: 10px; max-height: 380px; }
+table.etiquetas { border-collapse: separate; border-spacing: 0; font: 12.5px var(--f-mono); font-variant-numeric: tabular-nums; min-width: 100%; }
+.etiquetas th, .etiquetas td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--borde); }
+.etiquetas thead th {
+  position: sticky; top: 0; background: var(--tarjeta); z-index: 2; font-family: var(--f-texto);
+  font-size: 12px; color: var(--tenue); letter-spacing: .04em;
+}
+.etiquetas tbody th { position: sticky; left: 0; background: var(--tarjeta); z-index: 1; font-weight: 700; }
+.etiquetas tbody tr { cursor: pointer; }
+.etiquetas tbody tr:hover td, .etiquetas tbody tr:hover th { background: var(--papel); }
+.etiquetas td.fija { background: var(--fijado-suave); color: var(--fijado); font-weight: 600; }
+.etiquetas td.cambio { background: var(--actual-suave); color: var(--actual); font-weight: 700; }
+.etiquetas td.infinito { color: var(--tenue); }
+.etiquetas tr.activa th, .etiquetas tr.activa td { box-shadow: inset 0 2px 0 var(--ruta), inset 0 -2px 0 var(--ruta); }
+.etiquetas tr.activa th { color: var(--ruta); }
+
+.archivos { display: flex; flex-wrap: wrap; gap: 6px; }
+.archivos button { font-family: var(--f-mono); font-size: 13px; }
+.archivos button[aria-pressed="true"] { background: var(--ruta-suave); border-color: var(--ruta); color: var(--ruta); }
+pre.codigo {
+  margin: 0; max-height: 440px; overflow: auto; padding: 12px 0; border-radius: 10px; border: 1px solid var(--borde);
+  background: var(--papel); font: 12.5px/1.6 var(--f-mono); counter-reset: linea; tab-size: 4;
+}
+pre.codigo .linea { display: block; padding-right: 16px; }
+pre.codigo .linea::before {
+  counter-increment: linea; content: counter(linea); display: inline-block; width: 3.2em; padding-right: 1em;
+  text-align: right; color: var(--tenue); opacity: .6; user-select: none;
+}
+pre.codigo .k { color: var(--ruta); font-weight: 600; }
+pre.codigo .s { color: var(--fijado); }
+pre.codigo .c { color: var(--tenue); font-style: italic; }
+pre.codigo .n { color: var(--actual); }
+pre.codigo .y { color: var(--error); }
+
+/* ---------- Matriz ---------- */
+.panel-matriz { grid-area: matriz; }
+.panel-matriz .nota { padding: 12px 16px 0; }
+.matriz-envoltura { overflow-x: auto; padding: 12px 16px 4px; }
+table.matriz { border-collapse: separate; border-spacing: 3px; font-family: var(--f-mono); }
+.matriz th { font-size: 12px; color: var(--tenue); font-weight: 700; min-width: 24px; height: 24px; border-radius: 6px; transition: background .1s, color .1s; }
+.matriz th.marcado { background: var(--ruta); color: var(--sobre-color); }
+.matriz th.esquina { font-size: 10.5px; font-weight: 400; white-space: nowrap; }
+.matriz td { padding: 0; }
+.matriz input, .matriz .diag {
+  width: 40px; height: 34px; border-radius: 8px; text-align: center; font: 600 14px var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.matriz .diag { display: grid; place-items: center; }
+.matriz input { border: 1px solid var(--borde); background: var(--tarjeta); padding: 0; }
+.matriz input::placeholder { color: var(--arista); }
+.matriz input:focus { outline: none; border-color: var(--ruta); box-shadow: 0 0 0 3px var(--ruta-suave); }
+.matriz input.con-valor { background: var(--ruta-suave); border-color: transparent; }
+.matriz input.malo { border-color: var(--error); background: var(--error-suave); color: var(--error); }
+.matriz input.espejo { animation: espejo .6s ease-out; }
+@keyframes espejo { from { box-shadow: 0 0 0 3px var(--actual); } to { box-shadow: 0 0 0 0 transparent; } }
+.matriz .diag { background: var(--papel); color: var(--tenue); border: 1px dashed var(--borde); }
+.aviso { margin: 0; padding: 4px 16px 14px; color: var(--error); font-weight: 700; font-size: 13.5px; min-height: 1.5em; }
+.aviso:empty { padding-bottom: 8px; }
+
+/* ---------- Pie y ayuda ---------- */
+.pie { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; color: var(--tenue); font-size: 13px; padding-top: 4px; }
+.motor { display: inline-flex; align-items: center; gap: 8px; }
+.motor .led { width: 9px; height: 9px; border-radius: 50%; background: var(--arista); }
+.motor.python .led { background: var(--fijado); }
+.motor.respaldo .led { background: var(--actual); }
+
+dialog {
+  border: 1px solid var(--borde); border-radius: 16px; padding: 0; width: min(560px, calc(100vw - 32px));
+  background: var(--tarjeta); color: var(--tinta); box-shadow: var(--sombra);
+}
+dialog::backdrop { background: rgba(10, 14, 28, .45); }
+.ayuda-cuerpo { padding: 20px 22px 6px; display: grid; gap: 12px; }
+.ayuda-cuerpo h2 { font-size: 21px; }
+.ayuda-cuerpo ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.ayuda-cuerpo ul { margin: 6px 0 0; padding-left: 18px; color: var(--tenue); }
+.ayuda-pie { display: flex; justify-content: flex-end; padding: 12px 22px 18px; }
+
+/* ---------- Pantallas angostas ---------- */
+@media (max-width: 1000px) {
+  .tablero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "grafo" "recorrido" "matriz"; }
+  .panel-grafo { position: static; height: auto; min-height: 0; }
+  .lienzo { flex: none; height: var(--alto-grafo, 460px); }
+}
+@media (max-width: 560px) {
+  .marca h1 { font-size: 21px; }
+  .controles { width: 100%; }
+  .controles .btn:not(.icono) { flex: 1; }
+  .consulta .btn.grande { margin-left: 0; width: 100%; }
+  .navegacion .contador-paso { width: 100%; margin-left: 0; order: -1; }
+  .navegacion .btn { flex: 1; padding: 0 8px; }
+  .matriz input, .matriz .diag { width: 36px; height: 34px; font-size: 13px; }
+  .pestanas .largo { display: none; }
+  .pestanas button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+</head>
+<body>
+<div class="envoltura">
+  <header class="barra">
+    <div class="marca">
+      <svg class="logo" viewBox="0 0 42 42" aria-hidden="true">
+        <line class="l-arista" x1="9" y1="30" x2="21" y2="10"/>
+        <line class="l-arista" x1="21" y1="10" x2="34" y2="16"/>
+        <line class="l-ruta" x1="9" y1="30" x2="23" y2="28"/>
+        <line class="l-ruta" x1="23" y1="28" x2="34" y2="16"/>
+        <circle class="l-nodo r" cx="9" cy="30" r="5"/>
+        <circle class="l-nodo" cx="21" cy="10" r="5"/>
+        <circle class="l-nodo r" cx="23" cy="28" r="5"/>
+        <circle class="l-nodo r" cx="34" cy="16" r="5"/>
+      </svg>
+      <div>
+        <h1>Camino mínimo</h1>
+        <p>Algoritmo de Dijkstra · Matemática Computacional</p>
+      </div>
+    </div>
+    <div class="controles">
+      <div class="campo">
+        <span class="etiqueta" id="et-vertices">Vértices</span>
+        <div class="contador" role="group" aria-labelledby="et-vertices">
+          <button type="button" id="btn-menos" aria-label="Quitar un vértice">−</button>
+          <output id="n-vertices">8</output>
+          <button type="button" id="btn-mas" aria-label="Agregar un vértice">+</button>
+        </div>
+      </div>
+      <label class="interruptor" for="dirigido">
+        <input type="checkbox" id="dirigido">
+        <span class="pista" aria-hidden="true"></span>
+        <span>Dirigido</span>
+      </label>
+      <button type="button" class="btn primario" id="btn-generar">Generar aleatoria</button>
+      <button type="button" class="btn" id="btn-vacia">Matriz vacía</button>
+      <button type="button" class="btn icono" id="btn-ayuda" aria-label="Cómo se usa">?</button>
+    </div>
+  </header>
+
+  <main class="tablero">
+    <section class="panel panel-grafo" aria-labelledby="t-grafo">
+      <div class="panel-cabeza">
+        <h2 id="t-grafo">Grafo</h2>
+        <button type="button" class="btn chico" id="btn-reordenar" title="Vuelve a sortear la posición de los vértices">Reordenar vértices</button>
+      </div>
+      <div class="lienzo" id="lienzo">
+        <svg id="svg" role="img" aria-label="Dibujo del grafo con sus vértices y aristas"></svg>
+        <div class="aviso-grafo" id="aviso-grafo" hidden></div>
+        <div class="cargando" id="cargando">
+          <div class="giro"></div>
+          <p><b>Cargando Python…</b><br>Solo tarda unos segundos la primera vez.</p>
+        </div>
+      </div>
+      <div class="consulta">
+        <label class="campo" for="origen"><span class="etiqueta">Origen</span><select id="origen"></select></label>
+        <button type="button" class="btn icono" id="btn-intercambiar" aria-label="Intercambiar origen y destino" title="Intercambiar origen y destino">⇄</button>
+        <label class="campo" for="destino"><span class="etiqueta">Destino</span><select id="destino"></select></label>
+        <button type="button" class="btn primario grande" id="btn-calcular">Calcular ruta</button>
+      </div>
+      <ul class="leyenda">
+        <li><i class="punto"></i>Pendiente</li>
+        <li><i class="punto actual"></i>Vértice actual</li>
+        <li><i class="punto fijado"></i>Fijado</li>
+        <li><i class="punto ruta"></i>Ruta mínima</li>
+        <li><i class="raya"></i>Mejora la etiqueta</li>
+        <li><i class="raya revisa"></i>Revisada sin mejora</li>
+      </ul>
+    </section>
+
+    <section class="panel panel-recorrido" aria-labelledby="t-recorrido">
+      <div class="panel-cabeza">
+        <h2 id="t-recorrido">Recorrido del algoritmo</h2>
+      </div>
+      <div class="resumen" id="resumen" aria-live="polite"></div>
+      <div class="pestanas" role="tablist" aria-label="Vistas del recorrido">
+        <button type="button" role="tab" id="tab-paso" data-vista="paso" aria-selected="true" aria-controls="vista-paso">Paso a paso</button>
+        <button type="button" role="tab" id="tab-tabla" data-vista="tabla" aria-selected="false" aria-controls="vista-tabla">Tabla<span class="largo"> de etiquetas</span></button>
+        <button type="button" role="tab" id="tab-codigo" data-vista="codigo" aria-selected="false" aria-controls="vista-codigo">Código<span class="largo"> Python</span></button>
+      </div>
+      <div class="vista" id="vista-paso" role="tabpanel" aria-labelledby="tab-paso">
+        <div class="navegacion">
+          <button type="button" class="btn" id="btn-anterior">← Anterior</button>
+          <button type="button" class="btn" id="btn-reproducir">▶ Reproducir</button>
+          <button type="button" class="btn primario" id="btn-siguiente">Siguiente →</button>
+          <span class="contador-paso" id="contador-paso"></span>
+        </div>
+        <div class="progreso" id="progreso" aria-label="Orden en que se fijan los vértices"></div>
+        <div class="explicacion" id="explicacion" aria-live="polite"></div>
+      </div>
+      <div class="vista" id="vista-tabla" role="tabpanel" aria-labelledby="tab-tabla" hidden>
+        <p class="nota">Cada celda es [distancia, predecesor]. El asterisco (*) y el verde marcan un vértice ya fijado; el naranja, una etiqueta que mejoró en esa iteración. Toca una fila para verla en el grafo.</p>
+        <div class="tabla-envoltura"><table class="etiquetas" id="tabla"></table></div>
+      </div>
+      <div class="vista" id="vista-codigo" role="tabpanel" aria-labelledby="tab-codigo" hidden>
+        <p class="nota" id="nota-codigo">Estos son los archivos del proyecto que calculan la ruta en esta página.</p>
+        <div class="archivos" id="archivos"></div>
+        <pre class="codigo" id="codigo"></pre>
+      </div>
+    </section>
+
+    <section class="panel panel-matriz" aria-labelledby="t-matriz">
+      <div class="panel-cabeza">
+        <h2 id="t-matriz">Matriz de pesos</h2>
+        <span class="sub" id="sub-matriz">No dirigido · simétrica</span>
+      </div>
+      <p class="nota">Fila i, columna j: peso de la arista del vértice i al j. Deja la celda vacía o escribe <kbd>-</kbd> si no hay arista; <kbd>0</kbd> es una arista que existe y no cuesta nada.</p>
+      <div class="matriz-envoltura"><table class="matriz" id="matriz"></table></div>
+      <p class="aviso" id="aviso" role="alert"></p>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <span class="motor" id="motor"><i class="led"></i><span id="motor-texto">Preparando el motor del algoritmo…</span></span>
+    <span>Proyecto de Matemática Computacional</span>
+  </footer>
+</div>
+
+<dialog id="ayuda" aria-labelledby="t-ayuda">
+  <form method="dialog">
+    <div class="ayuda-cuerpo">
+      <h2 id="t-ayuda">Cómo se usa</h2>
+      <ol>
+        <li>Elige la cantidad de vértices (de 5 a 15) y si el grafo es dirigido. Cambiar cualquiera de los dos genera una matriz nueva.</li>
+        <li>Pulsa «Generar aleatoria» o escribe los pesos en la matriz.
+          <ul>
+            <li>Celda vacía o «-»: no hay arista.</li>
+            <li>0 es una arista que existe y no cuesta nada.</li>
+            <li>La diagonal siempre es 0.</li>
+            <li>Si el grafo no es dirigido, la matriz se mantiene simétrica sola: al escribir [i, j] se copia en [j, i].</li>
+          </ul>
+        </li>
+        <li>Elige el origen y el destino y pulsa «Calcular ruta».</li>
+        <li>Usa «Anterior», «Siguiente» o «Reproducir» para recorrer las iteraciones. En computadora también sirven las flechas ← y → del teclado.</li>
+        <li>Arrastra los vértices para acomodar el dibujo, o pulsa «Reordenar vértices» para sortearlos de nuevo. Al pasar el mouse sobre un vértice se resaltan sus aristas.</li>
+      </ol>
+      <p class="nota">Las filas y columnas siguen el orden de los vértices: 0, 1, 2, …</p>
+    </div>
+    <div class="ayuda-pie"><button class="btn primario" value="ok">Entendido</button></div>
+  </form>
+</dialog>
+
+<script type="text/plain" id="py-grafo.py">
+from math import isfinite as es_finito
+
+
+class Grafo:
+
+    def __init__(self, matriz, dirigido=False):
+        self._validar_matriz(matriz, dirigido)
+        self._matriz = [fila[:] for fila in matriz]
+        self._cantidad_vertices = len(matriz)
+        self._dirigido = dirigido
+
+    def _validar_matriz(self, matriz, dirigido):
+        cantidad_vertices = len(matriz)
+
+        if not 5 <= cantidad_vertices <= 15:
+            raise ValueError("El grafo debe tener entre 5 y 15 vértices.")
+
+        for fila in matriz:
+            if len(fila) != cantidad_vertices:
+                raise ValueError("La matriz debe ser cuadrada.")
+
+        for origen in range(cantidad_vertices):
+            for destino in range(cantidad_vertices):
+                self._validar_peso(matriz[origen][destino], origen, destino)
+
+        if not dirigido:
+            self._validar_simetria(matriz)
+
+    def _validar_peso(self, peso, origen, destino):
+        if origen == destino and peso != 0:
+            raise ValueError(f"La diagonal debe ser 0 (revisa la posición [{origen}, {destino}]).")
+
+        if peso is None:
+            return
+
+        if peso < 0:
+            raise ValueError(f"El peso de la posición [{origen}, {destino}] no puede ser negativo.")
+
+        if isinstance(peso, float) and not es_finito(peso):
+            raise ValueError(f"El peso de la posición [{origen}, {destino}] debe ser un número finito.")
+
+    def _validar_simetria(self, matriz):
+        cantidad_vertices = len(matriz)
+
+        for origen in range(cantidad_vertices):
+            for destino in range(origen + 1, cantidad_vertices):
+                if matriz[origen][destino] != matriz[destino][origen]:
+                    raise ValueError(
+                        f"La matriz no es simétrica: las posiciones [{origen}, {destino}] "
+                        f"y [{destino}, {origen}] son distintas."
+                    )
+
+    def _validar_vertice(self, vertice):
+        if not 0 <= vertice < self._cantidad_vertices:
+            raise ValueError("El vértice no pertenece al grafo.")
+
+    def obtener_cantidad_vertices(self):
+        return self._cantidad_vertices
+
+    def es_dirigido(self):
+        return self._dirigido
+
+    def obtener_matriz(self):
+        return [fila[:] for fila in self._matriz]
+
+    def obtener_peso(self, origen, destino):
+        self._validar_vertice(origen)
+        self._validar_vertice(destino)
+        return self._matriz[origen][destino]
+
+    def obtener_vecinos(self, vertice):
+        self._validar_vertice(vertice)
+        vecinos = []
+
+        for vecino, peso in enumerate(self._matriz[vertice]):
+            if vecino != vertice and peso is not None:
+                vecinos.append((vecino, peso))
+
+        return vecinos
+
+    def obtener_aristas(self):
+        aristas = []
+
+        for origen in range(self._cantidad_vertices):
+            for destino, peso in self.obtener_vecinos(origen):
+                if self._dirigido or origen < destino:
+                    aristas.append((origen, destino, peso))
+
+        return aristas
+</script>
+<script type="text/plain" id="py-dijkstra.py">
+from math import inf as infinito
+
+from grafo import Grafo
+
+
+class Dijkstra:
+
+    def __init__(self, grafo):
+        if not isinstance(grafo, Grafo):
+            raise ValueError("El algoritmo necesita un objeto de la clase Grafo.")
+
+        self._grafo = grafo
+
+    def resolver(self, origen, destino):
+        self._validar_vertices(origen, destino)
+        cantidad_vertices = self._grafo.obtener_cantidad_vertices()
+
+        distancias = [infinito] * cantidad_vertices
+        predecesores = [None] * cantidad_vertices
+        fijados = [False] * cantidad_vertices
+        distancias[origen] = 0
+
+        pasos = [self._crear_paso(0, None, distancias, predecesores, fijados, [])]
+
+        while True:
+            actual = self._seleccionar_vertice(distancias, fijados)
+
+            if actual is None:
+                break
+
+            fijados[actual] = True
+
+            relajaciones = []
+
+            if actual != destino:
+                relajaciones = self._relajar_vecinos(
+                    actual,
+                    distancias,
+                    predecesores,
+                    fijados
+                )
+
+            pasos.append(
+                self._crear_paso(
+                    len(pasos),
+                    actual,
+                    distancias,
+                    predecesores,
+                    fijados,
+                    relajaciones
+                )
+            )
+
+            if actual == destino:
+                break
+
+        alcanzable = distancias[destino] != infinito
+        camino = []
+        costo = infinito
+
+        if alcanzable:
+            camino = self._reconstruir_camino(destino, predecesores)
+            costo = self._calcular_costo(camino)
+
+            if costo != distancias[destino]:
+                raise ValueError("El costo de la ruta no coincide con la distancia calculada.")
+
+        return {
+            "origen": origen,
+            "destino": destino,
+            "alcanzable": alcanzable,
+            "camino": camino,
+            "costo": costo,
+            "pasos": pasos
+        }
+
+    def _validar_vertices(self, origen, destino):
+        cantidad_vertices = self._grafo.obtener_cantidad_vertices()
+
+        for vertice in (origen, destino):
+            if not 0 <= vertice < cantidad_vertices:
+                raise ValueError("El vértice no pertenece al grafo.")
+
+    def _crear_paso(
+        self,
+        iteracion,
+        vertice_actual,
+        distancias,
+        predecesores,
+        fijados,
+        relajaciones
+    ):
+        return {
+            "iteracion": iteracion,
+            "vertice_actual": vertice_actual,
+            "distancias": distancias[:],
+            "predecesores": predecesores[:],
+            "fijados": fijados[:],
+            "relajaciones": relajaciones
+        }
+
+    def _seleccionar_vertice(self, distancias, fijados):
+        actual = None
+        menor_distancia = infinito
+
+        for vertice in range(len(distancias)):
+            if not fijados[vertice] and distancias[vertice] < menor_distancia:
+                actual = vertice
+                menor_distancia = distancias[vertice]
+
+        return actual
+
+    def _relajar_vecinos(self, actual, distancias, predecesores, fijados):
+        relajaciones = []
+
+        for vecino, peso in self._grafo.obtener_vecinos(actual):
+            if fijados[vecino]:
+                continue
+
+            distancia_anterior = distancias[vecino]
+            distancia_propuesta = distancias[actual] + peso
+
+            if distancia_propuesta == infinito:
+                raise ValueError("Los pesos son demasiado grandes para calcular el costo.")
+
+            mejora = distancia_propuesta < distancia_anterior
+
+            relajaciones.append({
+                "origen": actual,
+                "destino": vecino,
+                "peso": peso,
+                "distancia_anterior": distancia_anterior,
+                "distancia_propuesta": distancia_propuesta,
+                "mejora": mejora
+            })
+
+            if mejora:
+                distancias[vecino] = distancia_propuesta
+                predecesores[vecino] = actual
+
+        return relajaciones
+
+    def _reconstruir_camino(self, destino, predecesores):
+        camino = []
+        actual = destino
+
+        while actual is not None:
+            camino.append(actual)
+            actual = predecesores[actual]
+
+        camino.reverse()
+        return camino
+
+    def _calcular_costo(self, camino):
+        costo = 0
+
+        for posicion in range(len(camino) - 1):
+            costo += self._grafo.obtener_peso(
+                camino[posicion],
+                camino[posicion + 1]
+            )
+
+        return costo
+</script>
+<script type="text/plain" id="py-generador.py">
+from random import randint as entero_aleatorio
+
+
+class GeneradorMatriz:
+
+    def __init__(self, peso_maximo=20):
+        if peso_maximo < 0:
+            raise ValueError("El peso máximo no puede ser negativo.")
+
+        self._peso_maximo = peso_maximo
+
+    def crear_matriz_vacia(self, cantidad_vertices):
+        self._validar_cantidad(cantidad_vertices)
+        matriz = []
+
+        for origen in range(cantidad_vertices):
+            fila = [None] * cantidad_vertices
+            fila[origen] = 0
+            matriz.append(fila)
+
+        return matriz
+
+    def generar_matriz(self, cantidad_vertices, dirigido=False):
+        matriz = self.crear_matriz_vacia(cantidad_vertices)
+
+        for origen in range(cantidad_vertices):
+            for destino in range(cantidad_vertices):
+                if origen == destino:
+                    continue
+
+                if not dirigido and destino < origen:
+                    continue
+
+                if entero_aleatorio(0, 1) == 1:
+                    peso = entero_aleatorio(0, self._peso_maximo)
+                    matriz[origen][destino] = peso
+
+                    if not dirigido:
+                        matriz[destino][origen] = peso
+
+        return matriz
+
+    def _validar_cantidad(self, cantidad_vertices):
+        if not 5 <= cantidad_vertices <= 15:
+            raise ValueError("El grafo debe tener entre 5 y 15 vértices.")
+</script>
+<script src="pyodide/pyodide.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const $ = (selector) => document.querySelector(selector);
+  const ARCHIVOS_PY = ["grafo.py", "dijkstra.py", "generador.py"];
+  const MIN_VERTICES = 5;
+  const MAX_VERTICES = 15;
+
+  // =====================================================================
+  //  Motor Python: ejecuta grafo.py, dijkstra.py y generador.py tal cual,
+  //  dentro del navegador, con Pyodide (CPython compilado a WebAssembly).
+  // =====================================================================
+  const PEGAMENTO_PY = [
+    "import sys, json",
+    "if '/home/pyodide' not in sys.path:",
+    "    sys.path.insert(0, '/home/pyodide')",
+    "from grafo import Grafo",
+    "from dijkstra import Dijkstra",
+    "from generador import GeneradorMatriz",
+    "",
+    "_generador = GeneradorMatriz()",
+    "",
+    "def web_vacia(n):",
+    "    return _generador.crear_matriz_vacia(n)",
+    "",
+    "def web_generar(n, dirigido):",
+    "    return _generador.generar_matriz(n, dirigido)",
+    "",
+    "def web_validar(texto, dirigido):",
+    "    try:",
+    "        Grafo(json.loads(texto), dirigido)",
+    "        return ''",
+    "    except ValueError as error:",
+    "        return str(error)",
+    "",
+    "def web_resolver(texto, dirigido, origen, destino):",
+    "    try:",
+    "        grafo = Grafo(json.loads(texto), dirigido)",
+    "        return {'ok': True, 'resultado': Dijkstra(grafo).resolver(origen, destino)}",
+    "    except ValueError as error:",
+    "        return {'ok': False, 'error': str(error)}",
+    "",
+    "def web_version():",
+    "    return sys.version.split()[0]"
+  ].join("\n");
+
+  function limpiar(valor) {
+    if (valor === undefined) return null;
+    if (Array.isArray(valor)) return valor.map(limpiar);
+    if (valor && typeof valor === "object") {
+      const salida = {};
+      for (const clave of Object.keys(valor)) salida[clave] = limpiar(valor[clave]);
+      return salida;
+    }
+    return valor;
+  }
+
+  function aJS(proxy) {
+    if (proxy && typeof proxy.toJs === "function") {
+      const valor = proxy.toJs({ dict_converter: Object.fromEntries });
+      if (typeof proxy.destroy === "function") proxy.destroy();
+      return limpiar(valor);
+    }
+    return limpiar(proxy);
+  }
+
+  // Donde no se puede publicar un .zip, la biblioteca estándar de Python
+  // viaja dentro de un script (en base64) y se entrega a Pyodide como blob.
+  function bibliotecaDesdeScript(base) {
+    return new Promise((resolver, rechazar) => {
+      const script = document.createElement("script");
+      script.src = base + "python_stdlib.js";
+      script.onload = () => {
+        try {
+          const texto = atob(window.PYTHON_STDLIB_B64);
+          const bytes = new Uint8Array(texto.length);
+          for (let i = 0; i < texto.length; i++) bytes[i] = texto.charCodeAt(i);
+          window.PYTHON_STDLIB_B64 = null;
+          resolver(URL.createObjectURL(new Blob([bytes], { type: "application/zip" })));
+        } catch (error) {
+          rechazar(error);
+        }
+      };
+      script.onerror = () => rechazar(new Error("No se pudo cargar la biblioteca estándar"));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function crearMotorPython() {
+    if (typeof window.loadPyodide !== "function") throw new Error("Pyodide no está disponible");
+    const base = new URL("pyodide/", location.href).href;
+    const opciones = { indexURL: base, fullStdLib: false };
+    if (window.BIBLIOTECA_EN_SCRIPT) opciones.stdLibURL = await bibliotecaDesdeScript(base);
+    const py = await window.loadPyodide(opciones);
+    for (const archivo of ARCHIVOS_PY) {
+      py.FS.writeFile("/home/pyodide/" + archivo, codigoFuente(archivo));
+    }
+    py.runPython(PEGAMENTO_PY);
+    const f = (nombre) => py.globals.get(nombre);
+    const version = f("web_version")();
+    return {
+      tipo: "python",
+      descripcion: "Python " + version + " ejecutando grafo.py, dijkstra.py y generador.py",
+      vacia: (n) => aJS(f("web_vacia")(n)),
+      generar: (n, dirigido) => aJS(f("web_generar")(n, dirigido)),
+      validar: (matriz, dirigido) => f("web_validar")(JSON.stringify(matriz), dirigido),
+      resolver: (matriz, dirigido, origen, destino) => aJS(f("web_resolver")(JSON.stringify(matriz), dirigido, origen, destino))
+    };
+  }
+
+  // =====================================================================
+  //  Motor de respaldo: la misma lógica de los .py, traducida línea por
+  //  línea. Solo se usa si Python no puede cargarse (sin internet, etc.).
+  // =====================================================================
+  const entero = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+  function validarCantidad(n) {
+    if (!(n >= MIN_VERTICES && n <= MAX_VERTICES)) throw new Error("El grafo debe tener entre 5 y 15 vértices.");
+  }
+
+  function validarMatrizJS(matriz, dirigido) {
+    const n = matriz.length;
+    validarCantidad(n);
+    for (const fila of matriz) if (fila.length !== n) throw new Error("La matriz debe ser cuadrada.");
+    for (let o = 0; o < n; o++) {
+      for (let d = 0; d < n; d++) {
+        const peso = matriz[o][d];
+        if (o === d && peso !== 0) throw new Error(`La diagonal debe ser 0 (revisa la posición [${o}, ${d}]).`);
+        if (peso === null) continue;
+        if (peso < 0) throw new Error(`El peso de la posición [${o}, ${d}] no puede ser negativo.`);
+        if (!Number.isFinite(peso)) throw new Error(`El peso de la posición [${o}, ${d}] debe ser un número finito.`);
+      }
+    }
+    if (!dirigido) {
+      for (let o = 0; o < n; o++) {
+        for (let d = o + 1; d < n; d++) {
+          if (matriz[o][d] !== matriz[d][o]) {
+            throw new Error(`La matriz no es simétrica: las posiciones [${o}, ${d}] y [${d}, ${o}] son distintas.`);
+          }
+        }
+      }
+    }
+  }
+
+  function vecinosJS(matriz, v) {
+    const lista = [];
+    matriz[v].forEach((peso, vecino) => { if (vecino !== v && peso !== null) lista.push([vecino, peso]); });
+    return lista;
+  }
+
+  function resolverJS(matriz, origen, destino) {
+    const n = matriz.length;
+    if (!(origen >= 0 && origen < n && destino >= 0 && destino < n)) throw new Error("El vértice no pertenece al grafo.");
+    const distancias = new Array(n).fill(Infinity);
+    const predecesores = new Array(n).fill(null);
+    const fijados = new Array(n).fill(false);
+    distancias[origen] = 0;
+    const crearPaso = (iteracion, actual, relajaciones) => ({
+      iteracion, vertice_actual: actual, distancias: distancias.slice(),
+      predecesores: predecesores.slice(), fijados: fijados.slice(), relajaciones
+    });
+    const pasos = [crearPaso(0, null, [])];
+
+    while (true) {
+      let actual = null;
+      let menor = Infinity;
+      for (let v = 0; v < n; v++) {
+        if (!fijados[v] && distancias[v] < menor) { actual = v; menor = distancias[v]; }
+      }
+      if (actual === null) break;
+      fijados[actual] = true;
+      const relajaciones = [];
+      if (actual !== destino) {
+        for (const [vecino, peso] of vecinosJS(matriz, actual)) {
+          if (fijados[vecino]) continue;
+          const anterior = distancias[vecino];
+          const propuesta = distancias[actual] + peso;
+          if (propuesta === Infinity) throw new Error("Los pesos son demasiado grandes para calcular el costo.");
+          const mejora = propuesta < anterior;
+          relajaciones.push({ origen: actual, destino: vecino, peso, distancia_anterior: anterior, distancia_propuesta: propuesta, mejora });
+          if (mejora) { distancias[vecino] = propuesta; predecesores[vecino] = actual; }
+        }
+      }
+      pasos.push(crearPaso(pasos.length, actual, relajaciones));
+      if (actual === destino) break;
+    }
+
+    const alcanzable = distancias[destino] !== Infinity;
+    let camino = [];
+    let costo = Infinity;
+    if (alcanzable) {
+      for (let v = destino; v !== null; v = predecesores[v]) camino.push(v);
+      camino.reverse();
+      costo = 0;
+      for (let i = 0; i < camino.length - 1; i++) costo += matriz[camino[i]][camino[i + 1]];
+      if (costo !== distancias[destino]) throw new Error("El costo de la ruta no coincide con la distancia calculada.");
+    }
+    return { origen, destino, alcanzable, camino, costo, pasos };
+  }
+
+  const motorJS = {
+    tipo: "respaldo",
+    descripcion: "Respaldo sin conexión: la misma lógica de los archivos .py traducida a JavaScript",
+    vacia(n) {
+      validarCantidad(n);
+      return Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 0 : null)));
+    },
+    generar(n, dirigido) {
+      const m = this.vacia(n);
+      for (let o = 0; o < n; o++) {
+        for (let d = 0; d < n; d++) {
+          if (o === d || (!dirigido && d < o)) continue;
+          if (entero(0, 1) === 1) {
+            const peso = entero(0, 20);
+            m[o][d] = peso;
+            if (!dirigido) m[d][o] = peso;
+          }
+        }
+      }
+      return m;
+    },
+    validar(matriz, dirigido) {
+      try { validarMatrizJS(matriz, dirigido); return ""; } catch (e) { return e.message; }
+    },
+    resolver(matriz, dirigido, origen, destino) {
+      try {
+        validarMatrizJS(matriz, dirigido);
+        return { ok: true, resultado: resolverJS(matriz, origen, destino) };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    }
+  };
+
+  // =====================================================================
+  //  Estado de la página
+  // =====================================================================
+  const estado = {
+    motor: null,
+    n: 8,
+    dirigido: false,
+    matriz: null,
+    malas: new Map(),      // "i,j" -> texto que no es número
+    error: "",
+    origen: 0,
+    destino: 7,
+    resultado: null,
+    errorCalculo: "",
+    paso: 0,
+    pos: null,             // posiciones relativas [x, y] en [0, 1]
+    vertical: false,
+    foco: null,            // celda de la matriz con foco [i, j]
+    hover: null,           // vértice bajo el mouse
+    arrastre: null,
+    temporizador: null,
+    vista: "paso",
+    archivo: "dijkstra.py"
+  };
+
+  // ---------- Utilidades ----------
+  function formatear(valor) {
+    if (valor === null || valor === undefined) return "-";
+    if (valor === Infinity) return "∞";
+    if (typeof valor === "number" && !Number.isInteger(valor)) return String(Math.round(valor * 1e6) / 1e6);
+    return String(valor);
+  }
+  const escapar = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const chip = (v, clase = "", chico = false) => `<span class="chip ${clase}${chico ? " chico" : ""}">${v}</span>`;
+  const aleatorio = (a, b) => a + Math.random() * (b - a);
+  const limitar = (x, a, b) => Math.min(Math.max(x, a), b);
+
+  function codigoFuente(archivo) {
+    const nodo = document.getElementById("py-" + archivo);
+    return nodo ? nodo.textContent.replace(/^\n/, "") : "";
+  }
+
+  // Misma idea que _generar_posiciones_relativas de interfaz.py:
+  // dispersión con tendencia lineal, del primer vértice al último.
+  function generarPosiciones(n) {
+    const distanciaMinima = 1.5 / n;
+    let mejor = null;
+    let mejorSeparacion = -1;
+    for (let intento = 0; intento < 400; intento++) {
+      const pendiente = aleatorio(-0.3, 0.3);
+      const puntos = [];
+      for (let v = 0; v < n; v++) {
+        let x = v / (n - 1);
+        if (v > 0 && v < n - 1) x += aleatorio(-0.35, 0.35) / (n - 1);
+        const y = 0.5 + pendiente * (x - 0.5) + aleatorio(-0.32, 0.32);
+        puntos.push([x, limitar(y, 0, 1)]);
+      }
+      let separacion = Infinity;
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          separacion = Math.min(separacion, Math.hypot(puntos[i][0] - puntos[j][0], puntos[i][1] - puntos[j][1]));
+        }
+      }
+      // Centrar la nube y darle una altura parecida en cada sorteo.
+      const ys = puntos.map((p) => p[1]);
+      const minY = Math.min(...ys);
+      const rango = Math.max(...ys) - minY || 1;
+      const escala = Math.min(0.72 / rango, 1.6);
+      for (const p of puntos) p[1] = limitar(0.5 + (p[1] - minY - rango / 2) * escala, 0, 1);
+      separacion = Infinity;
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          separacion = Math.min(separacion, Math.hypot(puntos[i][0] - puntos[j][0], puntos[i][1] - puntos[j][1]));
+        }
+      }
+      if (separacion > mejorSeparacion) { mejor = puntos; mejorSeparacion = separacion; }
+      if (separacion >= distanciaMinima) break;
+    }
+    return mejor;
+  }
+
+  // =====================================================================
+  //  Matriz
+  // =====================================================================
+  function construirMatriz() {
+    const n = estado.n;
+    let html = '<thead><tr><th class="esquina" scope="col">i \\ j</th>';
+    for (let j = 0; j < n; j++) html += `<th scope="col" data-col="${j}">${j}</th>`;
+    html += "</tr></thead><tbody>";
+    for (let i = 0; i < n; i++) {
+      html += `<tr><th scope="row" data-fila="${i}">${i}</th>`;
+      for (let j = 0; j < n; j++) {
+        if (i === j) {
+          html += '<td><span class="diag" title="La diagonal siempre es 0">0</span></td>';
+        } else {
+          const valor = estado.matriz[i][j];
+          const texto = valor === null ? "" : formatear(valor);
+          html += `<td><input id="c-${i}-${j}" data-i="${i}" data-j="${j}" value="${texto}" placeholder="–" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Peso de la arista ${i} a ${j}" class="${valor === null ? "" : "con-valor"}"></td>`;
+        }
+      }
+      html += "</tr>";
+    }
+    html += "</tbody>";
+    $("#matriz").innerHTML = html;
+    $("#sub-matriz").textContent = estado.dirigido ? "Dirigido · fila → columna" : "No dirigido · simétrica";
+  }
+
+  function leerCelda(texto) {
+    const limpio = texto.trim();
+    if (limpio === "" || limpio === "-" || limpio === "–") return { valor: null };
+    const numero = Number(limpio.replace(",", "."));
+    if (!Number.isFinite(numero)) return { malo: true };
+    return { valor: numero };
+  }
+
+  function alEditarCelda(evento) {
+    const input = evento.target;
+    if (!input.matches("input[data-i]")) return;
+    const i = Number(input.dataset.i);
+    const j = Number(input.dataset.j);
+    aplicarCelda(i, j, input.value, input);
+    if (!estado.dirigido) {
+      const espejo = document.getElementById(`c-${j}-${i}`);
+      if (espejo && espejo.value !== input.value) {
+        espejo.value = input.value;
+        espejo.classList.remove("espejo");
+        void espejo.offsetWidth;
+        espejo.classList.add("espejo");
+      }
+      aplicarCelda(j, i, input.value, espejo);
+    }
+    validarMatriz();
+    reiniciarResultado();
+  }
+
+  function aplicarCelda(i, j, texto, input) {
+    const lectura = leerCelda(texto);
+    const clave = `${i},${j}`;
+    if (lectura.malo) {
+      estado.malas.set(clave, texto);
+    } else {
+      estado.malas.delete(clave);
+      estado.matriz[i][j] = lectura.valor;
+    }
+    if (input) {
+      input.classList.toggle("malo", !!lectura.malo);
+      input.classList.toggle("con-valor", !lectura.malo && lectura.valor !== null);
+    }
+  }
+
+  function validarMatriz() {
+    if (estado.malas.size) {
+      const [clave] = estado.malas.keys();
+      const [fila, columna] = clave.split(",");
+      estado.error = `Posición [${fila}, ${columna}]: escribe un número o -.`;
+    } else {
+      estado.error = estado.motor ? estado.motor.validar(estado.matriz, estado.dirigido) : "";
+    }
+    $("#aviso").textContent = estado.error;
+  }
+
+  function marcarEncabezados() {
+    document.querySelectorAll(".matriz th.marcado").forEach((th) => th.classList.remove("marcado"));
+    if (!estado.foco) return;
+    const [i, j] = estado.foco;
+    const fila = document.querySelector(`.matriz th[data-fila="${i}"]`);
+    const columna = document.querySelector(`.matriz th[data-col="${j}"]`);
+    if (fila) fila.classList.add("marcado");
+    if (columna) columna.classList.add("marcado");
+  }
+
+  // =====================================================================
+  //  Acciones
+  // =====================================================================
+  function cargarMatriz(matriz, nuevasPosiciones) {
+    estado.matriz = matriz;
+    estado.malas.clear();
+    if (nuevasPosiciones || !estado.pos || estado.pos.length !== estado.n) estado.pos = generarPosiciones(estado.n);
+    construirMatriz();
+    validarMatriz();
+    actualizarSelectores();
+    ajustarAltoGrafo();
+    reiniciarResultado();
+  }
+
+  function generarAleatoria() {
+    if (!estado.motor) return;
+    cargarMatriz(estado.motor.generar(estado.n, estado.dirigido), true);
+  }
+
+  function matrizVacia() {
+    if (!estado.motor) return;
+    cargarMatriz(estado.motor.vacia(estado.n), true);
+  }
+
+  function cambiarCantidad(delta) {
+    const n = limitar(estado.n + delta, MIN_VERTICES, MAX_VERTICES);
+    if (n === estado.n) return;
+    estado.n = n;
+    $("#n-vertices").textContent = n;
+    $("#btn-menos").disabled = n <= MIN_VERTICES;
+    $("#btn-mas").disabled = n >= MAX_VERTICES;
+    if (estado.origen >= n) estado.origen = 0;
+    estado.destino = n - 1;
+    generarAleatoria();
+  }
+
+  function actualizarSelectores() {
+    const opciones = Array.from({ length: estado.n }, (_, v) => `<option value="${v}">${v}</option>`).join("");
+    $("#origen").innerHTML = opciones;
+    $("#destino").innerHTML = opciones;
+    if (estado.origen >= estado.n) estado.origen = 0;
+    if (estado.destino >= estado.n) estado.destino = estado.n - 1;
+    $("#origen").value = String(estado.origen);
+    $("#destino").value = String(estado.destino);
+  }
+
+  function calcular() {
+    if (!estado.motor) return;
+    detener();
+    validarMatriz();
+    if (estado.error) {
+      estado.resultado = null;
+      estado.errorCalculo = estado.error;
+      render();
+      return;
+    }
+    let respuesta;
+    try {
+      respuesta = estado.motor.resolver(estado.matriz, estado.dirigido, estado.origen, estado.destino);
+    } catch (e) {
+      respuesta = { ok: false, error: String((e && e.message) || e).trim().split("\n").pop() };
+    }
+    if (!respuesta.ok) {
+      estado.resultado = null;
+      estado.errorCalculo = respuesta.error;
+    } else {
+      estado.resultado = respuesta.resultado;
+      estado.errorCalculo = "";
+      estado.paso = 0;
+    }
+    render();
+  }
+
+  function reiniciarResultado() {
+    detener();
+    estado.resultado = null;
+    estado.errorCalculo = "";
+    estado.paso = 0;
+    render();
+  }
+
+  function irPaso(indice, desdeReproduccion) {
+    if (!estado.resultado) return;
+    if (!desdeReproduccion) detener();
+    estado.paso = limitar(indice, 0, estado.resultado.pasos.length - 1);
+    render();
+  }
+
+  function alternarReproduccion() {
+    if (estado.temporizador) { detener(); return; }
+    if (!estado.resultado) return;
+    const ultimo = estado.resultado.pasos.length - 1;
+    if (estado.paso >= ultimo) irPaso(0, true);
+    estado.temporizador = setInterval(() => {
+      if (!estado.resultado || estado.paso >= estado.resultado.pasos.length - 1) { detener(); return; }
+      irPaso(estado.paso + 1, true);
+      if (estado.paso >= estado.resultado.pasos.length - 1) detener();
+    }, 1300);
+    actualizarBotones();
+  }
+
+  function detener() {
+    if (estado.temporizador) clearInterval(estado.temporizador);
+    estado.temporizador = null;
+    actualizarBotones();
+  }
+
+  // =====================================================================
+  //  Dibujo del grafo
+  // =====================================================================
+  const lienzo = $("#lienzo");
+  const svg = $("#svg");
+
+  function medidas() {
+    const ancho = lienzo.clientWidth;
+    const alto = lienzo.clientHeight;
+    const radio = ancho < 520 ? 15 : 18;
+    const margen = radio + 26;
+    return { ancho, alto, radio, margen };
+  }
+
+  // En pantallas verticales (celular) la tendencia va de arriba hacia abajo
+  // y la dispersión lateral se abre un poco más para aprovechar el ancho.
+  const ABRIR = 1.3;
+
+  function aPantalla([x, y], m) {
+    const a = estado.vertical ? limitar(0.5 + (y - 0.5) * ABRIR, 0, 1) : x;
+    const b = estado.vertical ? x : y;
+    return [m.margen + a * (m.ancho - 2 * m.margen), m.margen + b * (m.alto - 2 * m.margen)];
+  }
+
+  function aRelativo(px, py, m) {
+    const a = limitar((px - m.margen) / Math.max(m.ancho - 2 * m.margen, 1), 0, 1);
+    const b = limitar((py - m.margen) / Math.max(m.alto - 2 * m.margen, 1), 0, 1);
+    return estado.vertical ? [b, limitar(0.5 + (a - 0.5) / ABRIR, 0, 1)] : [a, b];
+  }
+
+  function ajustarAltoGrafo() {
+    const alto = limitar(80 + estado.n * 50, 440, 760);
+    lienzo.style.setProperty("--alto-grafo", alto + "px");
+  }
+
+  function obtenerAristas() {
+    const aristas = [];
+    const m = estado.matriz;
+    for (let o = 0; o < estado.n; o++) {
+      for (let d = 0; d < estado.n; d++) {
+        if (o === d) continue;
+        const peso = m[o][d];
+        if (peso === null || estado.malas.has(`${o},${d}`)) continue;
+        if (estado.dirigido || o < d) aristas.push([o, d, peso]);
+      }
+    }
+    return aristas;
+  }
+
+  function contexto() {
+    const r = estado.resultado;
+    if (!r) return null;
+    const paso = r.pasos[estado.paso];
+    const final = estado.paso === r.pasos.length - 1;
+    const camino = final ? r.camino : [];
+    const clave = (a, b) => (estado.dirigido || a < b ? `${a}-${b}` : `${b}-${a}`);
+    const ruta = new Set();
+    for (let i = 0; i < camino.length - 1; i++) ruta.add(clave(camino[i], camino[i + 1]));
+    const relajadas = new Map();
+    for (const rel of paso.relajaciones) relajadas.set(clave(rel.origen, rel.destino), rel.mejora ? "mejora" : "revisa");
+    const arbol = new Set();
+    paso.fijados.forEach((fijo, v) => {
+      const p = paso.predecesores[v];
+      if (fijo && p !== null) arbol.add(clave(p, v));
+    });
+    const cambios = new Set(paso.relajaciones.filter((rel) => rel.mejora).map((rel) => rel.destino));
+    return { r, paso, final, camino, clave, ruta, relajadas, arbol, cambios };
+  }
+
+  function estadoArista(o, d, ctx) {
+    if (!ctx) return "";
+    const k = ctx.clave(o, d);
+    if (ctx.ruta.has(k)) return "ruta";
+    if (ctx.relajadas.has(k)) return ctx.relajadas.get(k);
+    if (ctx.arbol.has(k)) return "arbol";
+    return "";
+  }
+
+  function estadoVertice(v, ctx) {
+    if (!ctx) return "";
+    if (ctx.camino.includes(v)) return "ruta";
+    if (v === ctx.paso.vertice_actual) return "actual";
+    if (ctx.paso.fijados[v]) return "fijado";
+    return "";
+  }
+
+  function renderGrafo() {
+    if (!estado.pos || !estado.matriz) return;
+    const m = medidas();
+    if (!m.ancho || !m.alto) return;
+    estado.vertical = m.alto > m.ancho * 1.15;
+    svg.setAttribute("viewBox", `0 0 ${m.ancho} ${m.alto}`);
+    const P = estado.pos.map((p) => aPantalla(p, m));
+    const ctx = contexto();
+    const R = m.radio;
+
+    const resaltado = new Set();
+    if (estado.hover !== null && !estado.arrastre) resaltado.add(estado.hover);
+    if (estado.foco) { resaltado.add(estado.foco[0]); resaltado.add(estado.foco[1]); }
+    const enfoque = resaltado.size > 0;
+    const incide = (o, d) => {
+      if (estado.foco) {
+        const [i, j] = estado.foco;
+        return (o === i && d === j) || (!estado.dirigido && o === j && d === i);
+      }
+      return resaltado.has(o) || resaltado.has(d);
+    };
+
+    const prioridad = { "": 0, arbol: 1, revisa: 2, mejora: 3, ruta: 4 };
+    const aristas = obtenerAristas()
+      .map(([o, d, peso]) => ({ o, d, peso, est: estadoArista(o, d, ctx) }))
+      .sort((a, b) => prioridad[a.est] - prioridad[b.est]);
+
+    let defs = "<defs>";
+    for (const est of ["", "arbol", "revisa", "mejora", "ruta"]) {
+      defs += `<marker id="fl-${est || "normal"}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="${est === "ruta" ? 13 : 11}" markerHeight="${est === "ruta" ? 13 : 11}" orient="auto"><path class="flecha ${est}" d="M0,0 L10,5 L0,10 z"/></marker>`;
+    }
+    defs += "</defs>";
+
+    let lineas = "";
+    let pesos = "";
+    for (const a of aristas) {
+      const [ox, oy] = P[a.o];
+      const [dx, dy] = P[a.d];
+      const difX = dx - ox;
+      const difY = dy - oy;
+      const largo = Math.hypot(difX, difY) || 1;
+      const ux = difX / largo;
+      const uy = difY / largo;
+      let curvatura = 0;
+      if (estado.dirigido && estado.matriz[a.d][a.o] !== null) curvatura = 24;
+      const mx = (ox + dx) / 2 - uy * curvatura;
+      const my = (oy + dy) / 2 + ux * curvatura;
+      const sx = ox + R * ux;
+      const sy = oy + R * uy;
+      const fin = estado.dirigido ? R + 3 : R;
+      const ex = dx - fin * ux;
+      const ey = dy - fin * uy;
+      const cx = 2 * mx - (sx + ex) / 2;
+      const cy = 2 * my - (sy + ey) / 2;
+      const inc = enfoque && incide(a.o, a.d) ? " inc" : "";
+      const flecha = estado.dirigido ? ` marker-end="url(#fl-${a.est || "normal"})"` : "";
+      lineas += `<path class="arista ${a.est}${inc}" d="M${sx.toFixed(1)},${sy.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}"${flecha}/>`;
+      const lx = ox + 0.35 * difX - uy * curvatura * 0.45;
+      const ly = oy + 0.35 * difY + ux * curvatura * 0.45;
+      pesos += `<text class="peso ${a.est}${inc}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}">${formatear(a.peso)}</text>`;
+    }
+
+    let nodos = "";
+    for (let v = 0; v < estado.n; v++) {
+      const [x, y] = P[v];
+      const est = estadoVertice(v, ctx);
+      const inc = enfoque && resaltado.has(v) ? " inc" : "";
+      const arrastrando = estado.arrastre && estado.arrastre.v === v ? " arrastrando" : "";
+      let marcador = "";
+      if (v === estado.origen && v === estado.destino) marcador = "ORIGEN Y DESTINO";
+      else if (v === estado.origen) marcador = "ORIGEN";
+      else if (v === estado.destino) marcador = "DESTINO";
+      let g = `<g class="nodo ${est}${inc}${arrastrando}" data-v="${v}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">`;
+      g += `<circle r="${R + 8}" fill="transparent"/>`;
+      if (est === "actual" && !estado.arrastre) g += `<circle class="pulso" r="${R}"/>`;
+      if (marcador) g += `<circle class="anillo" r="${R + 5}"/>`;
+      g += `<circle class="cuerpo" r="${R}"/><text class="num">${v}</text>`;
+      if (marcador) g += `<text class="marcador" y="${-R - 10}">${marcador}</text>`;
+      if (ctx) {
+        const d = ctx.paso.distancias[v];
+        const texto = formatear(d);
+        const ancho = 16 + texto.length * 7.2;
+        const clase = ctx.cambios.has(v) ? "cambio" : ctx.paso.fijados[v] ? "fija" : "";
+        g += `<g class="dist ${clase}" transform="translate(0,${R + 13})"><rect x="${(-ancho / 2).toFixed(1)}" y="-9" width="${ancho.toFixed(1)}" height="18" rx="9"/><text>${texto}</text></g>`;
+      }
+      g += "</g>";
+      nodos += g;
+    }
+
+    svg.classList.toggle("enfoque", enfoque);
+    svg.innerHTML = defs + `<g>${lineas}</g><g>${pesos}</g><g>${nodos}</g>`;
+
+    const avisoGrafo = $("#aviso-grafo");
+    avisoGrafo.hidden = !estado.error;
+    avisoGrafo.textContent = estado.error ? "Revisa la matriz: " + estado.error : "";
+  }
+
+  function puntoEnLienzo(evento) {
+    const caja = svg.getBoundingClientRect();
+    return [evento.clientX - caja.left, evento.clientY - caja.top];
+  }
+
+  svg.addEventListener("pointerdown", (evento) => {
+    const g = evento.target.closest(".nodo");
+    if (!g) return;
+    evento.preventDefault();
+    estado.arrastre = { v: Number(g.dataset.v), id: evento.pointerId };
+    try { svg.setPointerCapture(evento.pointerId); } catch (e) { /* sin captura */ }
+    renderGrafo();
+  });
+  svg.addEventListener("pointermove", (evento) => {
+    if (estado.arrastre && evento.pointerId === estado.arrastre.id) {
+      const [px, py] = puntoEnLienzo(evento);
+      estado.pos[estado.arrastre.v] = aRelativo(px, py, medidas());
+      renderGrafo();
+      return;
+    }
+    if (evento.pointerType !== "mouse") return;
+    const g = evento.target.closest(".nodo");
+    const v = g ? Number(g.dataset.v) : null;
+    if (v !== estado.hover) { estado.hover = v; renderGrafo(); }
+  });
+  const soltar = (evento) => {
+    if (!estado.arrastre || evento.pointerId !== estado.arrastre.id) return;
+    estado.arrastre = null;
+    renderGrafo();
+  };
+  svg.addEventListener("pointerup", soltar);
+  svg.addEventListener("pointercancel", soltar);
+  svg.addEventListener("pointerleave", () => {
+    if (estado.hover !== null && !estado.arrastre) { estado.hover = null; renderGrafo(); }
+  });
+
+  // =====================================================================
+  //  Resultado, paso a paso y tabla
+  // =====================================================================
+  function renderResumen() {
+    const caja = $("#resumen");
+    const r = estado.resultado;
+    if (estado.errorCalculo) {
+      caja.innerHTML = `<p class="error">No se pudo calcular: ${escapar(estado.errorCalculo)}</p>`;
+      return;
+    }
+    if (!r) {
+      caja.innerHTML = '<p class="vacio">Elige un origen y un destino y pulsa «Calcular ruta».</p>';
+      return;
+    }
+    if (!r.alcanzable) {
+      caja.innerHTML = `<p class="error">No existe un camino del vértice ${r.origen} al vértice ${r.destino}.</p>`;
+      return;
+    }
+    const camino = r.camino.map((v) => chip(v, "ruta")).join('<span class="flecha-txt">→</span>');
+    caja.innerHTML = `
+      <div class="dato"><span class="etiqueta">Ruta mínima</span><span class="camino">${camino}</span></div>
+      <div class="dato"><span class="etiqueta">Costo total</span><span class="valor">${formatear(r.costo)}</span></div>
+      <div class="dato"><span class="etiqueta">Iteraciones</span><span class="valor">${r.pasos.length - 1}</span></div>`;
+  }
+
+  function describirRelajacion(paso, rel) {
+    const actual = rel.origen;
+    const vecino = rel.destino;
+    const distanciaActual = formatear(paso.distancias[actual]);
+    const anterior = formatear(rel.distancia_anterior);
+    const propuesta = formatear(rel.distancia_propuesta);
+    const suma = `${distanciaActual} + ${formatear(rel.peso)} = ${propuesta}`;
+    const par = `<span class="par">${chip(actual, "actual", true)}→${chip(vecino, "", true)}</span>`;
+    if (rel.mejora) {
+      return `<li class="mejora">${par}<span class="cuenta">${suma} &lt; ${anterior}</span><span class="veredicto">✓ nueva etiqueta [${propuesta}, ${actual}]</span></li>`;
+    }
+    const predecesor = formatear(paso.predecesores[vecino]);
+    return `<li>${par}<span class="cuenta">${suma} ≥ ${anterior}</span><span class="veredicto">se conserva [${anterior}, ${predecesor}]</span></li>`;
+  }
+
+  function renderPaso() {
+    const r = estado.resultado;
+    const explicacion = $("#explicacion");
+    const progreso = $("#progreso");
+    if (!r) {
+      $("#contador-paso").textContent = "";
+      progreso.innerHTML = "";
+      explicacion.innerHTML = estado.errorCalculo
+        ? '<p class="nota-paso">Corrige la matriz y vuelve a calcular.</p>'
+        : '<p class="nota-paso">Aquí verás cada iteración: qué vértice se fija y cómo cambian las etiquetas [distancia, predecesor] de sus vecinos.</p>';
+      return;
+    }
+    const k = estado.paso;
+    const ultimo = r.pasos.length - 1;
+    const paso = r.pasos[k];
+    $("#contador-paso").innerHTML = `Iteración <b>${k}</b> de ${ultimo}`;
+
+    progreso.innerHTML = r.pasos.map((p, i) => {
+      const clase = i === k ? "activo" : i < k ? "hecho" : "";
+      const texto = i === 0 ? "Inicio" : p.vertice_actual;
+      const titulo = i === 0 ? "Inicio" : `Iteración ${i}: se fija el vértice ${p.vertice_actual}`;
+      return `<button type="button" class="${clase}" data-paso="${i}" title="${titulo}">${texto}</button>`;
+    }).join('<span class="sep" aria-hidden="true">›</span>');
+
+    let html = "";
+    if (k === 0) {
+      html += `<div class="titulo-paso">Inicio ${chip(r.origen)}</div>`;
+      html += "<p>El origen tiene distancia 0 y los demás vértices tienen ∞. Todavía no hay vértices fijados.</p>";
+    } else {
+      const actual = paso.vertice_actual;
+      html += `<div class="titulo-paso">Se fija el vértice ${chip(actual, "actual")}</div>`;
+      html += `<p>Distancia ${formatear(paso.distancias[actual])}: es el pendiente con menor distancia.</p>`;
+      if (actual === r.destino) html += '<p class="nota-paso">Es el destino, así que el algoritmo se detiene.</p>';
+      else if (!paso.relajaciones.length) html += '<p class="nota-paso">No tiene vecinos pendientes que actualizar.</p>';
+      if (paso.relajaciones.length) {
+        html += `<ul class="relajaciones">${paso.relajaciones.map((rel) => describirRelajacion(paso, rel)).join("")}</ul>`;
+      }
+    }
+    if (k === ultimo) {
+      if (r.alcanzable) {
+        const ruta = r.camino.join(" → ");
+        html += `<div class="cierre"><b>Fin:</b> la distancia del destino ya es definitiva. Siguiendo los predecesores desde ${r.destino} hacia atrás se obtiene la ruta <b>${ruta}</b> con costo <b>${formatear(r.costo)}</b>.</div>`;
+      } else {
+        html += '<div class="cierre sin-camino"><b>Fin:</b> no quedan vértices con distancia finita; el destino es inaccesible.</div>';
+      }
+    }
+    explicacion.innerHTML = html;
+  }
+
+  function renderTabla() {
+    const tabla = $("#tabla");
+    const r = estado.resultado;
+    if (!r) {
+      tabla.innerHTML = '<tbody><tr><td style="padding:16px;color:var(--tenue)">Calcula una ruta para ver la tabla.</td></tr></tbody>';
+      return;
+    }
+    let html = '<thead><tr><th scope="col">Iteración</th><th scope="col">Fijado</th>';
+    for (let v = 0; v < estado.n; v++) html += `<th scope="col">${v}</th>`;
+    html += "</tr></thead><tbody>";
+    r.pasos.forEach((p, i) => {
+      const mejoras = new Set(p.relajaciones.filter((rel) => rel.mejora).map((rel) => rel.destino));
+      html += `<tr data-paso="${i}" class="${i === estado.paso ? "activa" : ""}"><th scope="row">${p.iteracion}</th><td>${formatear(p.vertice_actual)}</td>`;
+      for (let v = 0; v < estado.n; v++) {
+        const d = p.distancias[v];
+        let texto = `[${formatear(d)}, ${formatear(p.predecesores[v])}]`;
+        let clase = "";
+        if (p.fijados[v]) { texto += " *"; clase = "fija"; }
+        if (mejoras.has(v)) clase = "cambio";
+        if (d === Infinity) clase = "infinito";
+        html += `<td class="${clase}">${texto}</td>`;
+      }
+      html += "</tr>";
+    });
+    html += "</tbody>";
+    tabla.innerHTML = html;
+    const activa = tabla.querySelector("tr.activa");
+    if (activa && estado.vista === "tabla") {
+      const caja = tabla.parentElement;
+      const arriba = activa.offsetTop - 40;
+      if (arriba < caja.scrollTop || arriba > caja.scrollTop + caja.clientHeight - 80) caja.scrollTop = Math.max(arriba, 0);
+    }
+  }
+
+  function resaltarPython(fuente) {
+    const patron = /(#[^\n]*)|(f?"(?:[^"\\\n]|\\.)*"|f?'(?:[^'\\\n]|\\.)*')|\b(def|class|return|if|elif|else|for|in|while|not|and|or|is|None|True|False|import|from|as|raise|continue|break|pass|try|except|lambda|with)\b|\b(\d+(?:\.\d+)?)\b|\b(self)\b/g;
+    let salida = "";
+    let ultimo = 0;
+    let m;
+    while ((m = patron.exec(fuente))) {
+      salida += escapar(fuente.slice(ultimo, m.index));
+      const clase = m[1] ? "c" : m[2] ? "s" : m[3] ? "k" : m[4] ? "n" : "y";
+      salida += `<span class="${clase}">${escapar(m[0])}</span>`;
+      ultimo = patron.lastIndex;
+    }
+    salida += escapar(fuente.slice(ultimo));
+    return salida.replace(/\n$/, "").split("\n").map((linea) => `<span class="linea">${linea || " "}</span>`).join("");
+  }
+
+  function renderCodigo() {
+    $("#archivos").innerHTML = ARCHIVOS_PY.map((a) =>
+      `<button type="button" class="btn chico" data-archivo="${a}" aria-pressed="${a === estado.archivo}">${a}</button>`).join("");
+    $("#codigo").innerHTML = resaltarPython(codigoFuente(estado.archivo));
+    $("#nota-codigo").textContent = estado.motor && estado.motor.tipo === "python"
+      ? "Estos archivos del proyecto son los que calculan la ruta en esta página: el navegador los ejecuta con Python, sin cambios."
+      : "Estos son los archivos del proyecto. Ahora mismo la página usa su traducción a JavaScript porque no se pudo cargar Python.";
+  }
+
+  function actualizarBotones() {
+    const r = estado.resultado;
+    const ultimo = r ? r.pasos.length - 1 : 0;
+    $("#btn-anterior").disabled = !r || estado.paso <= 0;
+    $("#btn-siguiente").disabled = !r || estado.paso >= ultimo;
+    $("#btn-reproducir").disabled = !r;
+    $("#btn-reproducir").textContent = estado.temporizador ? "❚❚ Pausar" : "▶ Reproducir";
+    const listo = !!estado.motor;
+    for (const id of ["#btn-calcular", "#btn-generar", "#btn-vacia", "#btn-reordenar", "#btn-intercambiar", "#origen", "#destino", "#dirigido"]) {
+      $(id).disabled = !listo;
+    }
+    $("#btn-menos").disabled = !listo || estado.n <= MIN_VERTICES;
+    $("#btn-mas").disabled = !listo || estado.n >= MAX_VERTICES;
+    $("#btn-calcular").classList.toggle("llamar", listo && !r && !estado.error);
+  }
+
+  function render() {
+    renderGrafo();
+    renderResumen();
+    renderPaso();
+    renderTabla();
+    actualizarBotones();
+  }
+
+  function mostrarVista(vista) {
+    estado.vista = vista;
+    document.querySelectorAll('.pestanas [role="tab"]').forEach((tab) => {
+      tab.setAttribute("aria-selected", String(tab.dataset.vista === vista));
+    });
+    $("#vista-paso").hidden = vista !== "paso";
+    $("#vista-tabla").hidden = vista !== "tabla";
+    $("#vista-codigo").hidden = vista !== "codigo";
+    if (vista === "codigo") renderCodigo();
+    if (vista === "tabla") renderTabla();
+  }
+
+  // =====================================================================
+  //  Eventos
+  // =====================================================================
+  $("#btn-menos").addEventListener("click", () => cambiarCantidad(-1));
+  $("#btn-mas").addEventListener("click", () => cambiarCantidad(1));
+  $("#dirigido").addEventListener("change", (e) => { estado.dirigido = e.target.checked; generarAleatoria(); });
+  $("#btn-generar").addEventListener("click", generarAleatoria);
+  $("#btn-vacia").addEventListener("click", matrizVacia);
+  $("#btn-reordenar").addEventListener("click", () => { estado.pos = generarPosiciones(estado.n); renderGrafo(); });
+  $("#btn-calcular").addEventListener("click", calcular);
+  $("#btn-intercambiar").addEventListener("click", () => {
+    [estado.origen, estado.destino] = [estado.destino, estado.origen];
+    $("#origen").value = String(estado.origen);
+    $("#destino").value = String(estado.destino);
+    reiniciarResultado();
+  });
+  $("#origen").addEventListener("change", (e) => { estado.origen = Number(e.target.value); reiniciarResultado(); });
+  $("#destino").addEventListener("change", (e) => { estado.destino = Number(e.target.value); reiniciarResultado(); });
+  $("#btn-anterior").addEventListener("click", () => irPaso(estado.paso - 1));
+  $("#btn-siguiente").addEventListener("click", () => irPaso(estado.paso + 1));
+  $("#btn-reproducir").addEventListener("click", alternarReproduccion);
+  $("#progreso").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-paso]");
+    if (b) irPaso(Number(b.dataset.paso));
+  });
+  $("#tabla").addEventListener("click", (e) => {
+    const fila = e.target.closest("tr[data-paso]");
+    if (fila) irPaso(Number(fila.dataset.paso));
+  });
+  document.querySelector(".pestanas").addEventListener("click", (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (tab) mostrarVista(tab.dataset.vista);
+  });
+  $("#archivos").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-archivo]");
+    if (b) { estado.archivo = b.dataset.archivo; renderCodigo(); }
+  });
+
+  const matriz = $("#matriz");
+  matriz.addEventListener("input", alEditarCelda);
+  matriz.addEventListener("focusin", (e) => {
+    if (!e.target.matches("input[data-i]")) return;
+    estado.foco = [Number(e.target.dataset.i), Number(e.target.dataset.j)];
+    e.target.select();
+    marcarEncabezados();
+    renderGrafo();
+  });
+  matriz.addEventListener("focusout", () => {
+    estado.foco = null;
+    marcarEncabezados();
+    renderGrafo();
+  });
+  matriz.addEventListener("keydown", (e) => {
+    if (!e.target.matches("input[data-i]")) return;
+    const movimientos = { ArrowUp: [-1, 0], ArrowDown: [1, 0], Enter: [1, 0] };
+    if (e.target.selectionStart === 0 && e.target.selectionEnd === 0 && e.key === "ArrowLeft") movimientos.ArrowLeft = [0, -1];
+    if (e.target.selectionStart === e.target.value.length && e.key === "ArrowRight") movimientos.ArrowRight = [0, 1];
+    const mov = movimientos[e.key];
+    if (!mov) return;
+    let i = Number(e.target.dataset.i) + mov[0];
+    let j = Number(e.target.dataset.j) + mov[1];
+    if (i === j) { i += mov[0]; j += mov[1]; }
+    const destino = document.getElementById(`c-${i}-${j}`);
+    if (destino) { e.preventDefault(); destino.focus(); }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, select, textarea, dialog")) return;
+    if (e.key === "ArrowRight") { irPaso(estado.paso + 1); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { irPaso(estado.paso - 1); e.preventDefault(); }
+    if (e.key === " " && estado.resultado && !e.target.closest("button")) { alternarReproduccion(); e.preventDefault(); }
+  });
+
+  const dialogo = $("#ayuda");
+  $("#btn-ayuda").addEventListener("click", () => {
+    if (typeof dialogo.showModal === "function") dialogo.showModal();
+    else dialogo.setAttribute("open", "");
+  });
+  dialogo.addEventListener("click", (e) => { if (e.target === dialogo) dialogo.close(); });
+
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => renderGrafo()).observe(lienzo);
+  else window.addEventListener("resize", renderGrafo);
+
+  // =====================================================================
+  //  Arranque
+  // =====================================================================
+  function usarMotor(motor) {
+    const primero = !estado.motor;
+    estado.motor = motor;
+    const caja = $("#motor");
+    caja.classList.toggle("python", motor.tipo === "python");
+    caja.classList.toggle("respaldo", motor.tipo !== "python");
+    $("#motor-texto").textContent = "Algoritmo: " + motor.descripcion;
+    $("#cargando").hidden = true;
+    if (estado.vista === "codigo") renderCodigo();
+    if (primero) {
+      generarAleatoria();
+      calcular();
+    } else {
+      validarMatriz();
+      render();
+    }
+  }
+
+  function arrancar() {
+    estado.pos = generarPosiciones(estado.n);
+    estado.matriz = motorJS.vacia(estado.n);
+    construirMatriz();
+    actualizarSelectores();
+    ajustarAltoGrafo();
+    render();
+
+    let resuelto = false;
+    const respaldo = () => {
+      if (resuelto) return;
+      resuelto = true;
+      usarMotor(motorJS);
+    };
+    const espera = setTimeout(respaldo, 25000);
+    crearMotorPython()
+      .then((motor) => {
+        clearTimeout(espera);
+        resuelto = true;
+        usarMotor(motor);
+      })
+      .catch((error) => {
+        clearTimeout(espera);
+        console.warn("No se pudo cargar Python; se usa el respaldo en JavaScript.", error);
+        respaldo();
+      });
+  }
+
+  arrancar();
+})();
+
+</script>
+</body>
+</html>
